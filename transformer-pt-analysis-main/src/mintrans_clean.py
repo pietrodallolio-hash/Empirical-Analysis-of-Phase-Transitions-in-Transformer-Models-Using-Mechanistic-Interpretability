@@ -513,13 +513,22 @@ def plot_embedding_trig_components(
     p   = W_E.shape[0]
     k   = np.arange(p)
 
-    cos_vec = np.cos(2 * np.pi * freq * k / p)
-    sin_vec = np.sin(2 * np.pi * freq * k / p)
-    cos_vec /= np.linalg.norm(cos_vec)
-    sin_vec /= np.linalg.norm(sin_vec)
+    # Fourier basis vectors in token space (shape [p])
+    cos_basis = np.cos(2 * np.pi * freq * k / p)
+    sin_basis = np.sin(2 * np.pi * freq * k / p)
 
-    cos_proj = W_E @ cos_vec
-    sin_proj = W_E @ sin_vec
+    # Project W_E along the token axis to get the corresponding directions
+    # in d-dimensional embedding space (shape [d]).
+    # If W_E[k] ≈ A·cos(2πfk/p)·u + A·sin(2πfk/p)·v, then
+    # W_E.T @ cos_basis ∝ u and W_E.T @ sin_basis ∝ v.
+    cos_dir = W_E.T @ cos_basis          # shape [d]
+    sin_dir = W_E.T @ sin_basis          # shape [d]
+    cos_dir /= np.linalg.norm(cos_dir) + 1e-8
+    sin_dir /= np.linalg.norm(sin_dir) + 1e-8
+
+    # Project each token's embedding onto these d-space directions (shape [p])
+    cos_proj = W_E @ cos_dir
+    sin_proj = W_E @ sin_dir
 
     fig, ax = plt.subplots(figsize=(5, 5))
     sc = ax.scatter(cos_proj, sin_proj, c=k, cmap="hsv", s=30, zorder=3)
