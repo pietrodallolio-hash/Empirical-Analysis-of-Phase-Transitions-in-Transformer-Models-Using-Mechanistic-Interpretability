@@ -209,10 +209,18 @@ def second_moment_correlation_length(S: torch.Tensor) -> dict:
       ξ² = (S_peak / S_nn - 1) / (4 sin²(π/n))
     where S_nn is the mean of the four nearest-neighbour modes on the torus.
 
+    The peak is searched only along the diagonal k=ℓ (modes relevant to
+    grokking) to avoid the argmax jumping between competing diagonal frequencies
+    during the phase transition, which would produce spurious double tracks in ξ.
+
     Returns a dict with keys: xi, peak_index, S_peak, S_nn_mean.
     """
-    n  = S.shape[0]
-    kx, ky   = dominant_nonzero_mode(S)
+    n   = S.shape[0]
+    idx = torch.arange(n, device=S.device)
+    diag = S[idx, idx].clone()
+    diag[0] = -torch.inf              # exclude DC
+    k_star = int(torch.argmax(diag).item())
+    kx, ky = k_star, k_star
     S_peak   = S[kx, ky]
     neighbors = [
         ((kx + 1) % n, ky), ((kx - 1) % n, ky),
